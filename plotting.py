@@ -32,9 +32,9 @@ bf = time.time()
 
 SIM_TIME = 50000
 
-start_hit_rate = 1# *100MHz/cm2
-top_hit_rate =  5# *100MHz/cm2
-hit_rate_step = 0.5
+start_hit_rate = 2.1# *100MHz/cm2
+top_hit_rate =  2.1# *100MHz/cm2
+hit_rate_step = 0.1
 hit_rate_ar = np.arange(start_hit_rate,(top_hit_rate + hit_rate_step), hit_rate_step)
 print hit_rate_ar
 len_hit_rate_ar = len(hit_rate_ar)
@@ -65,7 +65,7 @@ for hit_rate in hit_rate_ar:
        'OUT_FIFO_SIZE': 128
        })
 
-if 1:
+if 0:
     ret = pool.map(func_arg, kw)
 
     print 'finish..'
@@ -121,18 +121,18 @@ print 'digital pileup', digital_pileup
 
 
 # plt.subplot(121)
-# plt.plot(hit_rate_ar, pileup_a, 'r*-', label = 'Simulated')
-# plt.plot(hit_rate_ar, pileup_d, 'gs-', label = 'Digital pileup')
-# plt.plot(hit_rate_ar, late_copy_loss, 'bx-', label = 'Data loss due to late copy')
-# plt.plot(hit_rate_ar, pileup_trig_mem, 'y+-', label = 'Trig memory pileup')
-# plt.plot(hit_rate_ar, total_loss, 'k<-', label = 'Total data loss')
+# plt.plot(hit_rate_ar, pileup_a, 'r*', label = 'analog pileup')
+# plt.plot(hit_rate_ar, pileup_d, 'gs', label = 'Digital pileup')
+# plt.plot(hit_rate_ar, late_copy_loss, 'bx', label = 'Data loss due to late copy')
+# plt.plot(hit_rate_ar, pileup_trig_mem, 'y+', label = 'Trig memory pileup')
+# plt.plot(hit_rate_ar, total_loss, 'k<', label = 'Total data loss')
 # plt.legend()
 # plt.title('Data loss')
 # plt.ylabel('%')
 # plt.xlabel('Hit rate (100 MHz/cm2)')
-# 
-# #plt.clf()
-# #
+# # 
+# # #plt.clf()
+# # #
 # plt.subplot(122)
 # for i in range(len(hit_rate_ar)-1):
 #     plt.bar(range(len(ret[i][6])),ret[i][6], label = '%0.1f*100MHits/s/cm2'%(start_hit_rate+i*hit_rate_step))
@@ -140,10 +140,10 @@ print 'digital pileup', digital_pileup
 # plt.title("Trigger memory occupancy")
 # plt.ylabel('#')
 # plt.xlabel('Occupied memeory')
-# #
-
+#
+# 
 mean_dead_time = np.zeros((len(hit_rate_ar)), dtype=np.float)
-plt.subplot(223)
+# plt.subplot(223)
 for i in range(len(hit_rate_ar)):
     plt.bar(range(len(ret[i][11])-15),ret[i][11][15:]/np.sum(ret[0][11], dtype=np.float), label = '%0.1f*100MHits/s/cm2'%(start_hit_rate+i*hit_rate_step))
     print ret[i][11][15:]
@@ -203,3 +203,4 @@ plt.xlabel('BX')
 print 'Run Time %0.9fm' % ((time.time()-bf)/60)
 
 plt.show()
+
