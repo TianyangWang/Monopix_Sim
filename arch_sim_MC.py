@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 #print = logger.info
 
 @numba.jit
-def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_AREA = 36.0*40.0, READ_COL = 4, ROW = 512, COL = 512, LOGIC_COL = 512/4, READ_TRIG_MEM = 1, TRIG_MEM_SIZE = 96, READ_OUT_FIFO = 1, OUT_FIFO_SIZE = 128):
+def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_AREA = 36.0*36.0, READ_COL = 2, ROW = 512, COL = 512, LOGIC_COL = 512/2, READ_TRIG_MEM = 1, TRIG_MEM_SIZE = 96, READ_OUT_FIFO = 1, OUT_FIFO_SIZE = 128):
     # Average hit rate L4: 0.021/mm2/BC
     ##############################################################
     #                      PAREMETERS                            #
@@ -54,9 +54,9 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
 
 #     logging.info('Total events: {}'.format(SIM_TIME))
 
-    TOT_SLOPE = 1.0/220               # ToT/e-
+    TOT_SLOPE = 1.0/250               # 4 ToT/1000 e-
     MAX_TOT = int(np.amax(CHIP_HITS['charge'])*TOT_SLOPE)
-    MEAN_TOT = 15
+    TOT_LIMIT = 16                    # ToT clipping
 
 #     logging.info('Max ToT: {}'.format(MAX_TOT))
 
@@ -65,7 +65,7 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
 
     active_area = float(PIXEL_AREA)*ROW*COL/(10000*10000)
 
-    hit_rate = (float(CHIP_HITS.size)/np.amax(CHIP_HITS['bcid'])/active_area)*40   # MHz/cm2
+    hit_rate = (float(CHIP_HITS.size)/np.amax(CHIP_HITS['bcid'])/active_area)*40   # Average value in MHz/cm2
 
     analog_pileup = 0.0
     digital_pileup = 0.0
@@ -74,19 +74,23 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
     total_hits = 0.0
     trig_count = 0
 
+
     pix_mem_tot = np.zeros((COL, ROW) ,dtype=np.int32)
     pix_mem_bx = np.zeros((COL, ROW) ,dtype=np.int32)
+
+    pix_hit_map = np.zeros((COL, ROW) ,dtype=np.int32)
+
     trig_mem = np.zeros((LOGIC_COL, TRIG_MEM_SIZE) ,dtype=np.int32)
     out_fifo = np.zeros((OUT_FIFO_SIZE) ,dtype=np.int32)
 
     out_fifo_hist = np.zeros((OUT_FIFO_SIZE+1) ,dtype=np.uint)
     trig_mem_hist = np.zeros((TRIG_MEM_SIZE+1) ,dtype=np.uint)
 
-    tot_hist = np.zeros((MAX_TOT+1) ,dtype=np.uint)
+    tot_hist = np.zeros((TOT_LIMIT+1) ,dtype=np.uint)
     trig_mem_fill_mon = np.zeros((LOGIC_COL, SIM_TIME) ,dtype=np.uint)
     out_fifo_fill_mon = np.zeros((SIM_TIME) ,dtype=np.uint)
     to_read_trig_mem_mon = np.zeros((SIM_TIME) ,dtype=np.uint)
-    col_ro_delay_hist = np.zeros((PIXEL_MAX_LATENCY+1+MEAN_TOT), dtype=np.uint)
+    col_ro_delay_hist = np.zeros((PIXEL_MAX_LATENCY+1+TOT_LIMIT), dtype=np.uint)
 
     read_col_cnt = np.zeros((LOGIC_COL) ,dtype=np.uint)
     read_fifo_cnt = 0
@@ -98,10 +102,11 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
 
     for bx in range(SIM_TIME):
 
-        hits_bx = CHIP_HITS[CHIP_HITS['bcid'] == bx]
+        hits_bx = CHIP_HITS[CHIP_HITS['bcid'] == bx] #random.randint(0, 9999)]
         hits_per_bx[bx] = hits_bx.size
 
-        print 'bx number: {}'.format(bx)
+        if bx%1000 == 1:
+            print 'bx number: {}'.format(bx)
 #         logging.info('hits info: {}'.format(hits_bx))
 #         logging.info('total hits for bx {}: {}'.format(bx, hits_per_bx[bx]))
 
@@ -176,7 +181,7 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
 #             logging.info('col index: {} - {}'.format(col_start, col_end))
 
             #hit counter/tot
-            pix_mem_tot[col_start:col_end][pix_mem_tot[col_start:col_end] > 0] -= 1
+#             pix_mem_tot[col_start:col_end][pix_mem_tot[col_start:col_end] > 0] -= 1
 #             logging.info('pix tot: {}'.format(pix_mem_tot[col_start:col_end]))
 #             logging.info('pix tot>0 len: {}'.format(len(pix_mem_tot[col_start:col_end][pix_mem_tot[col_start:col_end] > 0])))
 #             logging.info('pix tot>0: {}'.format(pix_mem_tot[col_start:col_end][pix_mem_tot[col_start:col_end] > 0]))
@@ -188,7 +193,7 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
 #             logging.info('pix bx>0: {}'.format(pix_mem_bx[col_start:col_end][pix_mem_bx[col_start:col_end] > 0]))
 
             #Late copy
-            late_copy += len(np.where(pix_mem_bx[col_start:col_end] == (PIXEL_MAX_LATENCY + 1 + MEAN_TOT))[0])
+            late_copy += len(np.where(pix_mem_bx[col_start:col_end] == (PIXEL_MAX_LATENCY + 1))[0])# + pix_mem_tot[col_start:col_end]
 
             if TRIGGER[bx] == False:
                 trig_mem[logic_col][trig_mem[logic_col] == LATENCY] = 0
@@ -204,9 +209,9 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
             #process eoc
 #             logging.info('read_col_cnt[{}]: {}'.format(logic_col, read_col_cnt[logic_col]))
             if read_col_cnt[logic_col] >= READ_COL-1:
-                max_bx_latency = np.max(pix_mem_bx[col_start:col_end][np.where(pix_mem_tot[col_start:col_end] == 0)])
+                max_bx_latency = np.amax(pix_mem_bx[col_start:col_end] - pix_mem_tot[col_start:col_end])
 #                 logging.info('max bx latency for pix to read: {}'.format(max_bx_latency))
-                to_read_pix = np.where((pix_mem_bx[col_start:col_end] > 0) & (pix_mem_tot[col_start:col_end]==0) & (pix_mem_bx[col_start:col_end]==max_bx_latency))
+                to_read_pix = np.where(((pix_mem_bx[col_start:col_end] - pix_mem_tot[col_start:col_end]) > 0) & ((pix_mem_bx[col_start:col_end] - pix_mem_tot[col_start:col_end]) == max_bx_latency))
 #                 to_read_pix = np.where((pix_mem_bx[col_start:col_end] > 0) & (pix_mem_tot[col_start:col_end]==0))
 
                 to_read_pix[0][:] += col_start
@@ -218,26 +223,31 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
 #                     logging.info('empty trig mem: {}'.format(empty_mems))
                     if len(empty_mems):
                         mem_loc = empty_mems[0]
-                        if pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] <= (PIXEL_MAX_LATENCY + MEAN_TOT):
+                        if pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] < (PIXEL_MAX_LATENCY + 1):
+#                       if pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] <= (PIXEL_MAX_LATENCY + pix_mem_tot[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]]):
                             col_ro_delay_hist[pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]]] += 1
                             val = pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]]
 #                             logging.info('col ro delay: {}'.format(pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]]))
                         else:
+                            print 'Pixel to read with large delay in logic column {} at bx {}'.format(logic_col, bx)
+                            print pix_mem_bx[col_start:col_end][pix_mem_bx[col_start:col_end] > 0]
                             large_delay += 1
                             val = pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] % (PIXEL_MAX_LATENCY +1)
                         trig_mem[logic_col][mem_loc] = val
                         if WAIT_FOR_TRIG_MEM == True:
                             pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] = 0 #clear this pixel
+                            pix_mem_tot[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] = 0
                             read_col_cnt[logic_col] = 0
                     else:
                         trig_mem_pileup += 1
 
                     if WAIT_FOR_TRIG_MEM == False:
                         pix_mem_bx[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] = 0 #clear this pixel
+                        pix_mem_tot[to_read_pix[0][read_pix]][to_read_pix[1][read_pix]] = 0
                         read_col_cnt[logic_col] = 0
 
                     break
-            elif np.max(pix_mem_bx[col_start:col_end][np.where(pix_mem_tot[col_start:col_end] == 0)]) > 0:
+            elif np.amax(pix_mem_bx[col_start:col_end] - pix_mem_tot[col_start:col_end]) > 0:
                 read_col_cnt[logic_col] += 1
 
 #             logging.info('occupied trig mem after matrix r.o.: {}'.format(np.nonzero(trig_mem[logic_col])[0]))
@@ -245,7 +255,8 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
         for pix in hits_bx:
             total_hits += 1
 #             logging.info('hit pix {} - {}'.format(pix['eta_index'], pix['phi_index']))
-            if pix_mem_tot[pix['eta_index']][pix['phi_index']] > 0:
+            pix_hit_map[pix['eta_index']][pix['phi_index']] += 1
+            if (pix_mem_tot[pix['eta_index']][pix['phi_index']] - pix_mem_bx[pix['eta_index']][pix['phi_index']] >= 0) & (pix_mem_bx[pix['eta_index']][pix['phi_index']] > 0):
                 analog_pileup += 1 #Analog pielup
             else:
                 if pix_mem_bx[pix['eta_index']][pix['phi_index']] > 0:
@@ -253,8 +264,8 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
                 elif pix_mem_bx[pix['eta_index']][pix['phi_index']] == 0: #start bx_cnt
                     pix_mem_bx[pix['eta_index']][pix['phi_index']] = 1
 #             print 'charge for hit ({} {}): {}'.format(pix['eta_index'], pix['phi_index'], pix['charge'])
-            if int(TOT_SLOPE*pix['charge']) >= MEAN_TOT:
-                hits_tot = MEAN_TOT
+            if int(TOT_SLOPE*pix['charge']) >= TOT_LIMIT:
+                hits_tot = TOT_LIMIT
             else:
                 hits_tot = int(TOT_SLOPE*pix['charge'])
             tot_hist[hits_tot] += 1
@@ -262,7 +273,7 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
                 large_tot += 1
 #             print 'MP ToT:', np.amax(tot_hist)
 #             logging.info('ToT is: {}'.format(hits_tot))
-            pix_mem_tot[pix['eta_index']][pix['phi_index']] += MEAN_TOT#hits_tot #paralyzable deadtime
+            pix_mem_tot[pix['eta_index']][pix['phi_index']] += hits_tot #paralyzable deadtime
 #             logging.info('tot assigned to pix ({} {}): {}'.format(pix['eta_index'], pix['phi_index'], pix_mem_tot[pix['eta_index']][pix['phi_index']]))
 
     print 'large tot portion:  {}%'.format(100*large_tot/total_hits)
@@ -281,7 +292,8 @@ def monopix_sim(CHIP_HITS, TRIGGER, LATENCY = 400, TRIGGER_RATE = 4.0/40, PIXEL_
                'to_read_trig_mem_mon': to_read_trig_mem_mon,
                'col_ro_delay_hist': col_ro_delay_hist,
                'hits_per_bx': hits_per_bx,
-               'hit_rate': hit_rate
+               'hit_rate': hit_rate,
+               'pix_hit_map': pix_hit_map
                }
     return sim_out
 
@@ -358,7 +370,8 @@ if __name__ == "__main__":
                 'out_fifo_fill_mon',
                 'to_read_trig_mem_mon',
                 'col_ro_delay_hist',
-                'hits_per_bx']
+                'hits_per_bx',
+                'pix_hit_map']
     sim_out = {kw: None for kw in sim_out_kwlist}
     print sim_out
     sim_out = monopix_sim(**kwa)
