@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-mc_hits = np.load('pixel_hits-36x36x25.npy')
+mc_hits = np.load('pixel_hits-36x36-5000.npy')
 
 total_event = np.amax(mc_hits['bcid'])
 print('total events: {}'.format(total_event))
