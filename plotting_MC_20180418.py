@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
-from arch_sim_MC import monopix_sim
+from arch_sim_MC_20180418 import monopix_sim
 from numba.tests.npyufunc.test_ufunc import dtype
 from matplotlib.legend import Legend
 from matplotlib.pyplot import hist
@@ -12,14 +12,14 @@ bf = time.time()
 
 
 #print (36.4*36.4*512*2)/(1000*1000)
-mc_hits = np.load('pixel_hits-36x36-5000.npy')
+mc_hits = np.load('pixel_hits-36x36x25.npy')
 print('MC data type: {}'.format(mc_hits.dtype))
-total_event = np.amax(mc_hits['bcid']) + 1
+total_event = np.amax(mc_hits['bcid'])
 print 'total event: {}'.format(total_event)
 mc_trigger = np.zeros((total_event + 1), dtype = bool)
 
 # module 1 - 8 are quad, module 9 - 21 are double (inclined)
-for module_num in range(1, 14):
+for module_num in range(26, 27):
     module_hits = mc_hits[mc_hits['eta_module'] == module_num]
 
     #eta_index = col, phi_index = row
@@ -27,7 +27,7 @@ for module_num in range(1, 14):
     col = 512
     chip_hits = module_hits[(module_hits['eta_index'] < col) & (module_hits['phi_index'] < row)]
 
-    threshold = 150
+    threshold = 300
     noise_scale = 10
     sel_chip_hits = chip_hits[np.where((chip_hits['charge_track'] + chip_hits['charge_noise']/noise_scale) > threshold)] # select hits over threshold
     #
@@ -40,10 +40,8 @@ for module_num in range(1, 14):
                           ])
     hits = np.empty((sel_chip_hits.size,), dtype=hit_dtype)
     hits['bcid'] = sel_chip_hits['bcid']
-#     hits['eta_index'] = sel_chip_hits['eta_index']
-#     hits['phi_index'] = sel_chip_hits['phi_index']
-    hits['eta_index'] = sel_chip_hits['phi_index']
-    hits['phi_index'] = sel_chip_hits['eta_index']
+    hits['eta_index'] = sel_chip_hits['eta_index']
+    hits['phi_index'] = sel_chip_hits['phi_index']
     hits['charge'] = sel_chip_hits['charge_track'] + sel_chip_hits['charge_noise']/noise_scale
 
 
@@ -58,15 +56,15 @@ for module_num in range(1, 14):
 
     kwa = {'CHIP_HITS': hits,
            'TRIGGER': mc_trigger,
-           'LATENCY': 500,
+           'LATENCY': 400,
            'TRIGGER_RATE': 4.0/40,
            'PIXEL_AREA': 36.0*36.0,
            'READ_COL': 2,
            'ROW': row,
            'COL': col,
            'LOGIC_COL': col/2,
-           'READ_TRIG_MEM': 4,
-           'TRIG_MEM_SIZE': 64,
+           'READ_TRIG_MEM': 2,
+           'TRIG_MEM_SIZE': 128,
            'READ_OUT_FIFO': 4,
            'OUT_FIFO_SIZE': 32
            }
@@ -91,11 +89,11 @@ for module_num in range(1, 14):
     if 1:
         sim_out = monopix_sim(**kwa)
         print 'saving data...'
-        with open('trigmem64_2_4_4_module_%s.pickle' %module_num, 'w') as outfile:
+        with open('data_no_tot_limit_module_%s.pickle' %module_num, 'w') as outfile:
             pickle.dump(sim_out, outfile)
 
     print 'pickle...'
-    with open('trigmem48_2_4_4_module_%s.pickle' %module_num, 'r') as infile:
+    with open('data_no_tot_limit_module_%s.pickle' %module_num, 'r') as infile:
         sim_out = pickle.load(infile)
 
     print '-------------------------------------------'
@@ -121,7 +119,7 @@ for module_num in range(1, 14):
     print ('mean ToT for module {}:          {}').format(module_num, mean_tot)
     print '-------------------------------------------'
 
-# print 'plotting...'
+print 'plotting...'
 
 # plt.subplot(211)
 # plt.plot(sim_out['hit_rate'], analog_pileup, 'r*-', label = 'Analog pileup')

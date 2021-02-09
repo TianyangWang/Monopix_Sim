@@ -30,11 +30,11 @@ def func_arg(arg):
 
 bf = time.time()
 
-SIM_TIME = 50000
+SIM_TIME = 5000
 
-start_hit_rate = 2.1# *100MHz/cm2
-top_hit_rate =  2.1# *100MHz/cm2
-hit_rate_step = 0.1
+start_hit_rate = 1# *100MHz/cm2
+top_hit_rate =  10# *100MHz/cm2
+hit_rate_step = 0.5
 hit_rate_ar = np.arange(start_hit_rate,(top_hit_rate + hit_rate_step), hit_rate_step)
 print hit_rate_ar
 len_hit_rate_ar = len(hit_rate_ar)
@@ -53,10 +53,10 @@ for hit_rate in hit_rate_ar:
     kw.append({'SIM_TIME': SIM_TIME,
        'LATENCY': 400,
        'TRIGGER_RATE': 4.0/40,
-       'PIXEL_AREA': 36.0*40.0, #36.0*40.0,
+       'PIXEL_AREA': 50*150, #36.0*40.0,
        'READ_COL': 4,
-       'LOGIC_COLUMNS': 512/2, #512/4,
-       'PIXEL_NO': 512*2, #512*4,
+       'LOGIC_COLUMNS': 56, #512/4,
+       'PIXEL_NO': 340, #512*4,
        'HIT_RATE_CM': hit_rate*100*(10**6),
        'MEAN_TOT': 15,
        'READ_TRIG_MEM': 32,
@@ -65,7 +65,7 @@ for hit_rate in hit_rate_ar:
        'OUT_FIFO_SIZE': 128
        })
 
-if 0:
+if 1:
     ret = pool.map(func_arg, kw)
 
     print 'finish..'
@@ -120,28 +120,27 @@ print 'digital pileup', digital_pileup
 
 
 
-# plt.subplot(121)
-# plt.plot(hit_rate_ar, pileup_a, 'r*', label = 'analog pileup')
-# plt.plot(hit_rate_ar, pileup_d, 'gs', label = 'Digital pileup')
-# plt.plot(hit_rate_ar, late_copy_loss, 'bx', label = 'Data loss due to late copy')
-# plt.plot(hit_rate_ar, pileup_trig_mem, 'y+', label = 'Trig memory pileup')
-# plt.plot(hit_rate_ar, total_loss, 'k<', label = 'Total data loss')
-# plt.legend()
-# plt.title('Data loss')
-# plt.ylabel('%')
-# plt.xlabel('Hit rate (100 MHz/cm2)')
-# # 
+plt.subplot(121)
+plt.plot(hit_rate_ar, pileup_a, 'r*', label = 'analog pileup')
+plt.plot(hit_rate_ar, pileup_d, 'gs', label = 'Digital pileup')
+plt.plot(hit_rate_ar, late_copy_loss, 'bx', label = 'Data loss due to late copy')
+plt.plot(hit_rate_ar, pileup_trig_mem, 'y+', label = 'Trig memory pileup')
+plt.plot(hit_rate_ar, total_loss, 'k<', label = 'Total data loss')
+plt.legend()
+plt.title('Data loss')
+plt.ylabel('%')
+plt.xlabel('Hit rate (100 MHz/cm2)')
 # # #plt.clf()
-# # #
-# plt.subplot(122)
-# for i in range(len(hit_rate_ar)-1):
-#     plt.bar(range(len(ret[i][6])),ret[i][6], label = '%0.1f*100MHits/s/cm2'%(start_hit_rate+i*hit_rate_step))
-# plt.legend()
-# plt.title("Trigger memory occupancy")
-# plt.ylabel('#')
-# plt.xlabel('Occupied memeory')
+
+plt.subplot(122)
+for i in range(len(hit_rate_ar)-1):
+    plt.bar(range(len(ret[i][6])),ret[i][6], label = '%0.1f*100MHits/s/cm2'%(start_hit_rate+i*hit_rate_step))
+plt.legend()
+plt.title("Trigger memory occupancy")
+plt.ylabel('#')
+plt.xlabel('Occupied memeory')
 #
-# 
+#
 mean_dead_time = np.zeros((len(hit_rate_ar)), dtype=np.float)
 # plt.subplot(223)
 for i in range(len(hit_rate_ar)):
@@ -151,14 +150,14 @@ for i in range(len(hit_rate_ar)):
     print wait_time
     mean_dead_time[i] = np.average((wait_time), weights=ret[i][11][15:])
 print 'mean dead time', mean_dead_time
-plt.legend()
-plt.title("Column RO delay")
-plt.ylabel('#')
-plt.yscale('log')
-plt.xlabel('BX')
+# plt.legend()
+# plt.title("Column RO delay")
+# plt.ylabel('#')
+# plt.yscale('log')
+# plt.xlabel('BX')
 
 
-# 
+#
 # plt.subplot(222)
 # for i in range(len(hit_rate_ar)-1):
 #     plt.hist(ret[i][12], bins = 78, range = [1, 80], label = '%0.1f*100MHits/s/cm2'%(start_hit_rate+i*hit_rate_step))

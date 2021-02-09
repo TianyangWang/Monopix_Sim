@@ -30,16 +30,17 @@ rootLogger.addHandler(consoleHandler)
 
 logging.info('loading MC hits data...')
 
-mc_hits = np.load('pixel_hits-36x36-5000.npy')
+mc_hits = np.load('/faust/user/tianyang/ownCloud/pixel_hits-150x50x150-1120.npy')
 
 mc_hits_dtype = mc_hits.dtype
 logging.info('MC hits data type: {}'.format(mc_hits_dtype))
 
-threshold = 150
-noise_scale = 10
-module_num = 2
+threshold = 1500
+noise_scale = 1
+module_num = 1
 module_hits = mc_hits[mc_hits['eta_module']==module_num]
 sel_hits = module_hits[np.where((module_hits['charge_track'] + module_hits['charge_noise']/noise_scale) > threshold)]
+# sel_hits = module_hits[np.where(module_hits['charge_track'] > threshold)]
 
 
 hit_dtype = np.dtype([('event_number', np.uint32),
@@ -54,7 +55,8 @@ hits['event_number'] = sel_hits['bcid']
 hits['frame'] = 0
 hits['column'] = sel_hits['eta_index']
 hits['row'] = sel_hits['phi_index']
-hits['charge'] = sel_hits['charge_track'] + sel_hits['charge_noise']/10
+hits['charge'] = sel_hits['charge_track'] + sel_hits['charge_noise']/noise_scale
+# hits['charge'] = sel_hits['charge_track']
 
 
 # Initialize clusterizer object
@@ -97,7 +99,7 @@ logging.info('OUTPUT cluster data type:       {}'.format(clusters.dtype))
 
 
 hit_per_module = float(np.size(hits))
-logging.info('Total hits per module:   {}'.format(hit_per_module))
+logging.info('Total hits for module {}:       {}'.format(module_num, hit_per_module))
 
 hit_num_from_cluster = 0
 for i in range(np.max(clusters['n_hits'])):
@@ -106,64 +108,67 @@ for i in range(np.max(clusters['n_hits'])):
 logging.info('Hit count from clusters: {}'.format(hit_num_from_cluster))
 
 bcid_max = float(np.max(hits['event_number']))
-logging.info('Maximum bcid:            {}'.format(bcid_max))
-pix_size = float(36*36)/1000000   # in mm2
+pix_size = float(50*150)/1000000   # in mm2
 module_size = float(np.max(hits['column']))*float(np.max(hits['row']))*pix_size/100
-logging.info('Pixel size:              {}mm2'.format(pix_size))
-logging.info('Module size:             {}cm2'.format(module_size))
 hit_rate = 40*hit_per_module/bcid_max/module_size
+
+logging.info('Maximum bcid:            {}'.format(bcid_max))
+logging.info('Pixel size:              {}mm2'.format(pix_size))
+logging.info('Columns per module:      {}'.format(np.max(hits['column'])))
+logging.info('Rows per module:         {}'.format(np.max(hits['row'])))
+logging.info('Module size:             {}cm2'.format(module_size))
 logging.info('Hit rate:                {}MHz/cm2'.format(hit_rate))
 
 
 
-#
+
 # plt.subplot(3,3,1)
-# plt.hist(clusters['charge'], bins = 1000, range = [0, 40000], label = 'Cluster charge')
+# plt.hist(clusters['charge'], bins = 1000, range = [0, 4000], label = 'Cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_single_hit = clusters[np.where(clusters['n_hits'] == 1)]
 # plt.subplot(3,3,2)
-# plt.hist(cluster_single_hit['charge'], bins = 500, range = [0, 2000], label = 'Single hit cluster charge')
+# plt.hist(cluster_single_hit['charge'], bins = 1000, range = [0, 4000], label = 'Single hit cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_2_hit = clusters[np.where(clusters['n_hits'] == 2)]
 # plt.subplot(3,3,3)
-# plt.hist(cluster_2_hit['charge'], bins = 500, range = [0, 4000], label = '2 hit cluster charge')
+# plt.hist(cluster_2_hit['charge'], bins = 1000, range = [0, 4000], label = '2 hit cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_3_hit = clusters[np.where(clusters['n_hits'] == 3)]
 # plt.subplot(3,3,4)
-# plt.hist(cluster_3_hit['charge'], bins = 500, range = [0, 15000], label = '3 hit cluster charge')
+# plt.hist(cluster_3_hit['charge'], bins = 1000, range = [0, 4000], label = '3 hit cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_4_hit = clusters[np.where(clusters['n_hits'] == 4)]
 # plt.subplot(3,3,5)
-# plt.hist(cluster_4_hit['charge'], bins = 500, range = [0, 15000], label = '4 hit cluster charge')
+# plt.hist(cluster_4_hit['charge'], bins = 1000, range = [0, 4000], label = '4 hit cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_5_hit = clusters[np.where(clusters['n_hits'] == 5)]
 # plt.subplot(3,3,6)
-# plt.hist(cluster_5_hit['charge'], bins = 500, range = [0, 15000], label = '5 hit cluster charge')
+# plt.hist(cluster_5_hit['charge'], bins = 1000, range = [0, 4000], label = '5 hit cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_6_hit = clusters[np.where(clusters['n_hits'] == 6)]
 # plt.subplot(3,3,7)
-# plt.hist(cluster_6_hit['charge'], bins = 500, range = [0, 20000], label = '6 hit cluster charge')
+# plt.hist(cluster_6_hit['charge'], bins = 1000, range = [0, 4000], label = '6 hit cluster charge')
 # plt.legend()
-# 
+#  
 # cluster_7_hit = clusters[np.where(clusters['n_hits'] == 7)]
 # plt.subplot(3,3,8)
-# plt.hist(cluster_7_hit['charge'], bins = 500, range = [0, 20000], label = '7 hit cluster charge')
+# plt.hist(cluster_7_hit['charge'], bins = 1000, range = [0, 4000], label = '7 hit cluster charge')
 # plt.legend()
-
-# plt.subplot(3,3,9)
-# plt.hist(cluster_hits['charge'], bins = 1000, range = [0, 2000], label = 'hit charge module 20')
-# plt.legend()
+# 
 # cluster_8_hit = clusters[np.where(clusters['n_hits'] == 8)]
 # plt.subplot(3,3,9)
-# plt.hist(cluster_8_hit['charge'], bins = 500, range = [0, 20000], label = '8 hit cluster charge')
+# plt.hist(cluster_8_hit['charge'], bins = 1000, range = [0, 4000], label = '8 hit cluster charge')
 # plt.legend()
 
+# plt.subplot(3,3,9)
+# plt.hist(cluster_hits['charge'], bins = 1000, range = [0, 40000], label = 'hit charge module 20')
+# plt.legend()
 
 # plt.subplot(2,3,6)
 # seed_hits = cluster_hits[np.where(cluster_hits['is_seed'] == 1)]
@@ -174,23 +179,23 @@ logging.info('Hit rate:                {}MHz/cm2'.format(hit_rate))
 
 
 
-# np.bincount(clusters['n_hits'])
-#
-# plt.subplot(221)
-# plt.hist(hits['charge'], bins = 200, range = [0, 4000])
-# plt.yscale('log', nonposy='clip')
-# plt.title('Hit charge')
-#
-#plt.subplot(222)
-plt.hist(clusters['charge'], bins = 2000, range = [0, 20000])
-#plt.yscale('log', nonposy='clip')
+np.bincount(clusters['n_hits'])
+
+plt.subplot(221)
+plt.hist(hits['charge'], bins = 200, range = [0, 40000])
+plt.yscale('log', nonposy='clip')
+plt.title('Hit charge')
+
+plt.subplot(222)
+plt.hist(clusters['charge'], bins = 2000, range = [0, 40000])
+plt.yscale('log', nonposy='clip')
 plt.xlabel('Charge')
 plt.title('Cluster charge')
-#
-# claster_size_hist = np.bincount(clusters['n_hits'])[:40]
-# plt.subplot(223)
-# plt.bar(range(claster_size_hist.size), claster_size_hist)
-# plt.title('Cluster size')
+
+claster_size_hist = np.bincount(clusters['n_hits'])[:40]
+plt.subplot(223)
+plt.bar(range(claster_size_hist.size), claster_size_hist)
+plt.title('Cluster size')
 plt.show()
 
 
